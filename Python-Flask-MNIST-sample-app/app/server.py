@@ -55,7 +55,7 @@ def sendtomodel():
             canvas_data = request.get_json()
             payload = canvas_data
             result = client.deployments.score( model_deployment_endpoint_url, payload )
-            print( "result: " + json.dumps( result, indent=3 ) )
+            print(f"result: {json.dumps(result, indent=3)}")
             return jsonify( result )
         else:
             err = "Model endpoint URL not set in 'server.py'"
@@ -73,7 +73,7 @@ def sendtofunction():
             canvas_data = request.get_json()
             payload = canvas_data
             result = client.deployments.score( function_deployment_endpoint_url, payload )
-            print( "result: " + json.dumps( result, indent=3 ) )
+            print(f"result: {json.dumps(result, indent=3)}")
             return jsonify( result )
         else:
             err = "Function endpoint URL not set in 'server.py'"
@@ -91,7 +91,7 @@ def sendtowebserver():
             canvas_data = request.get_json()
             payload = createPayload( canvas_data )
             result = client.deployments.score( model_deployment_endpoint_url, payload )
-            print( "result: " + json.dumps( result, indent=3 ) )
+            print(f"result: {json.dumps(result, indent=3)}")
             return jsonify( result )
         else:
             err = "Model endpoint URL not set in 'server.py'"
