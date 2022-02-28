@@ -71,50 +71,47 @@ def fetch_current():
   # DATES TO FETCH
   N=1
   current_date = central.date() + timedelta(days=1)
-  for i in range(0,1):                          # ****** MAIN FOR-LOOP *******
-    
-      current_date = current_date - timedelta(days=N)
-      past_day = current_date - timedelta(days=N)
-      print(current_date,past_day)
+  for _ in range(1):
+    current_date = current_date - timedelta(days=N)
+    past_day = current_date - timedelta(days=N)
+    print(current_date,past_day)
 
 
-      #                 ************** WEATHER_BIT API CONNECTION ***************
-    
-      API_KEY = '8a7a5c90b0d94dca908583248bc49929'
+    #                 ************** WEATHER_BIT API CONNECTION ***************
 
-      url = f"https://api.weatherbit.io/v2.0/history/hourly?lat=21.20&lon=74.23&start_date={past_day}&end_date={current_date}&tz=local&key={API_KEY}"
-      response = requests.get(url)
+    API_KEY = '8a7a5c90b0d94dca908583248bc49929'
 
-      print(response.status_code)
-      weather = json.loads(response.text)  
-      time.sleep(1)  
-    
-      #                 *************** CONVERSION TO DATAFRAME ****************
-    
-    
- 
-      df_current = pd.DataFrame.from_dict(weather['data'][0],orient='index').transpose()
-      for forecast in weather['data'][1:]:
-          df_current = pd.concat([df_current, pd.DataFrame.from_dict(forecast,orient='index').transpose()])
- 
+    url = f"https://api.weatherbit.io/v2.0/history/hourly?lat=21.20&lon=74.23&start_date={past_day}&end_date={current_date}&tz=local&key={API_KEY}"
+    response = requests.get(url)
+
+    print(response.status_code)
+    weather = json.loads(response.text)
+    time.sleep(1)  
+
+    #                 *************** CONVERSION TO DATAFRAME ****************
+
+
+
+    df_current = pd.DataFrame.from_dict(weather['data'][0],orient='index').transpose()
+    for forecast in weather['data'][1:]:
+        df_current = pd.concat([df_current, pd.DataFrame.from_dict(forecast,orient='index').transpose()])
     # extract time and use it as index
-      time_ = np.array(df_current['timestamp_local'])
-      for row in range(len(time_)):
-          time_[row] = datetime.strptime(time_[row], '%Y-%m-%dT%H:%M:%S')
- 
-      df_current = df_current.set_index(time_)
-        
-    
-      #                 ********* ACCUMULATING ALL DATA IN A SINGLE FRAME ********
-    
-      list_of_frames.append(df_current)
+    time_ = np.array(df_current['timestamp_local'])
+    for row in range(len(time_)):
+        time_[row] = datetime.strptime(time_[row], '%Y-%m-%dT%H:%M:%S')
 
+    df_current = df_current.set_index(time_)
+
+
+    #                 ********* ACCUMULATING ALL DATA IN A SINGLE FRAME ********
+
+    list_of_frames.append(df_current)
 #del df
 #gc.collect()
   print("Fetch completed...!!!  :)")
   df_current = pd.concat(list_of_frames)
   df_current = df_current.sort_index()
-  df_current.shape    
+  df_current.shape
   df_full = df_current.copy()
 
   return df_current
@@ -141,9 +138,7 @@ df_current = decode_weather(df_current)
 
 def format_dataframe(df):
   df.index = pd.to_datetime(df.index)
-  if "Energy" in df.columns:
-    pass
-  else:
+  if "Energy" not in df.columns:
     col_names = ['Humidity','Wind_Speed','Visibility','Sea_level_pres','day/night','Normal_irradiance','Solar_Elevation','Pressure','Solar_hour_angle',
              'Dew_Point','UV_index','Solar_Rad','Wind_Direction','Global_irradiance','Direct_irradiance','Avg_temp','Azi_anlge',
              'Temperature','Precipitation','Clouds','Icon','Code','Description']
@@ -184,12 +179,12 @@ weather = json.loads(response.text)
 df_future = pd.DataFrame.from_dict(weather['data'][0],orient='index').transpose()
 for forecast in weather['data'][1:]:
     df_future = pd.concat([df_future, pd.DataFrame.from_dict(forecast,orient='index').transpose()])
- 
+
 # extract time and use it as index
 time_ = np.array(df_future['timestamp_local'])
 for row in range(len(time_)):
     time_[row] = datetime.strptime(time_[row], '%Y-%m-%dT%H:%M:%S')
- 
+
 df_future = df_future.set_index(time_)
 df_future.index = pd.to_datetime(df_future.index)
 df_future = decode_weather(df_future)
@@ -197,7 +192,7 @@ df_future.to_csv("Brahmanvel_future.csv")
 
 df_jsons = pd.DataFrame()
 df_jsons = df_future[['wind_spd','uv']]
-df_jsons.drop(['uv'],axis=1,inplace=True)     
+df_jsons.drop(['uv'],axis=1,inplace=True)
 df_jsons.index = df_future.index
 df_jsons.index = pd.to_datetime(df_jsons.index)
 df_jsons.index = df_jsons.index.astype('string')
@@ -214,13 +209,13 @@ double_df = pd.DataFrame()
 name = []
 value = []
 for i in df_feature_json.columns:
-  name.append(str(i)+"_today")
-  name.append(str(i)+"_tomorrow")
-  value.append(np.mean(df_feature_json[str(i)][:24].values))
-  value.append(np.mean(df_feature_json[str(i)][24:].values))
-  
+  name.extend((f'{str(i)}_today', f'{str(i)}_tomorrow'))
+  value.extend((
+      np.mean(df_feature_json[str(i)][:24].values),
+      np.mean(df_feature_json[str(i)][24:].values),
+  ))
 double_df['names'] = name
-double_df['values'] = value  
+double_df['values'] = value
 double_df.index = double_df['names']
 double_df.drop(['names'],axis=1,inplace=True)
 double_df = double_df.T
@@ -245,9 +240,7 @@ df_future[['Humidity','Wind_Speed','Visibility','Sea_level_pres','Normal_irradia
 
 # Concatenating the DataFrames
 
-temp_list = []
-temp_list.append(df_prev)
-temp_list.append(df_current)
+temp_list = [df_prev, df_current]
 df = pd.concat(temp_list)
 df = df.sort_index()
 df.to_csv("Brahmanvel.csv")
@@ -255,9 +248,7 @@ df.to_csv("Brahmanvel.csv")
 del temp_list
 gc.collect
 
-temp_list_2 =[]
-temp_list_2.append(df)
-temp_list_2.append(df_future)
+temp_list_2 = [df, df_future]
 df = pd.concat(temp_list_2)
 df = df.sort_index()
 
@@ -311,13 +302,15 @@ df['rolling_mean_2'] = df['Energy'].rolling(window=2).mean()
 df['rolling_mean_3'] = df['Energy'].rolling(window=3).mean()
 df['rolling_mean_6'] = df['Energy'].rolling(window=6).mean()
 
-# MORE ROLLING FEATURES 
+# MORE ROLLING FEATURES
 for i in [36,72,144]:
-    print('Rolling period:', i)
-    df['rolling_mean_'+str(i)] = df['Energy'].transform(lambda x: x.shift(1).rolling(i).mean())
-    df['rolling_std_'+str(i)]  = df['Energy'].transform(lambda x: x.shift(1).rolling(i).std())
+  print('Rolling period:', i)
+  df[f'rolling_mean_{str(i)}'] = df['Energy'].transform(lambda x: x.shift(1).
+                                                        rolling(i).mean())
+  df[f'rolling_std_{str(i)}'] = df['Energy'].transform(lambda x: x.shift(1).
+                                                       rolling(i).std())
 
-cat_cols = list(df.select_dtypes(include=['object']).columns) 
+cat_cols = list(df.select_dtypes(include=['object']).columns)
 num_cols = list(df.select_dtypes(exclude=['object']).columns)
 print("cat cols:",cat_cols)
 print("numeric cols:",num_cols)
@@ -375,18 +368,18 @@ def XGB_fine_tune(space):
   return {'loss':XGB_rmse, 'status':STATUS_OK}
 
 print(" \n\nBest Model Search processing for XgBoost...")
-space ={'learning_rate':hp.loguniform('learning_rate',np.log(0.01), np.log(0.5)),
-        'max_depth': hp.choice("x_max_depth",range( 4, 16, 1)),
-        'num_leaves': hp.choice('num_leaves', range(2, 300, 1)),
-        'min_child_weight': hp.quniform ('x_min_child', 1, 10, 1),
-        'feature_fraction': hp.uniform('feature_fraction', 0.1, 1.0),
-        'bagging_fraction': hp.uniform('bagging_fraction', 0.1, 1.0),
-        'subsample': hp.uniform('subsample', 0.1, 1.0),
-        'gamma' : hp.uniform ('x_gamma', 0.1,0.5),
-        'colsample_bytree' : hp.uniform ('x_colsample_bytree', 0.7,1),
-        'reg_lambda': hp.uniform ('x_reg_lambda', 0,1),
-        
-    }
+space = {
+    'learning_rate': hp.loguniform('learning_rate', np.log(0.01), np.log(0.5)),
+    'max_depth': hp.choice("x_max_depth", range(4, 16)),
+    'num_leaves': hp.choice('num_leaves', range(2, 300)),
+    'min_child_weight': hp.quniform('x_min_child', 1, 10, 1),
+    'feature_fraction': hp.uniform('feature_fraction', 0.1, 1.0),
+    'bagging_fraction': hp.uniform('bagging_fraction', 0.1, 1.0),
+    'subsample': hp.uniform('subsample', 0.1, 1.0),
+    'gamma': hp.uniform('x_gamma', 0.1, 0.5),
+    'colsample_bytree': hp.uniform('x_colsample_bytree', 0.7, 1),
+    'reg_lambda': hp.uniform('x_reg_lambda', 0, 1),
+}
 trials = Trials()
 best = fmin(fn=XGB_fine_tune,
             space=space,
@@ -412,7 +405,7 @@ xgb_ft_model =XGBRegressor(n_estimators =1000,
                            #reg_alpha=0.3899,
                            reg_lambda = best['x_reg_lambda'],
                            verbosity=1
-                           
+
                            )
 eval_set = [(XGB_X_train,XGB_Y_train),(XGB_X_cv,XGB_Y_cv)]
 
@@ -499,21 +492,20 @@ def LGBM_fine_tune(space):
 
 # SEARCH SPACE FOR LIGHT-GBM PARAMETERS
 print("\n\n Searching Best model search for Light GBM...")
-space = { 'max_depth' : hp.choice('max_depth', range(0, 16, 1)),
-            'num_leaves': hp.choice('num_leaves',range(32,512,16)),
-            'feature_fraction': hp.uniform('feature_fraction',0.1,1.0),
-            'bagging_fraction':hp.uniform('bagging_fraction',0.1,1.0),
-            'learning_rate' : hp.loguniform('learning_rate', np.log(0.01), np.log(0.5)),
-            #'n_estimators' : hp.choice('n_estimators', range(128, 1024, 64)),
-            'gamma' : hp.uniform('gamma', 0.1, 0.50),
-            #'min_data_in_leaf':hp.randint('min_data_in_leaf',range(64,256)),
-            'max_bin' : hp.choice('max_bin',range(32,512,32)),
-            'min_child_weight' : hp.quniform('min_child_weight', 1, 15, 1),
-            'subsample' : hp.uniform('subsample', 0.1, 1.0),
-            'reg_alpha': hp.uniform('reg_alpha', 0.0, 1.0),
-            'reg_lambda': hp.uniform('reg_lambda', 0.0, 1.0),
-            'colsample_bytree' : hp.uniform('colsample_bytree', 0.5, 1.0)
-            }
+space = {
+    'max_depth': hp.choice('max_depth', range(16)),
+    'num_leaves': hp.choice('num_leaves', range(32, 512, 16)),
+    'feature_fraction': hp.uniform('feature_fraction', 0.1, 1.0),
+    'bagging_fraction': hp.uniform('bagging_fraction', 0.1, 1.0),
+    'learning_rate': hp.loguniform('learning_rate', np.log(0.01), np.log(0.5)),
+    'gamma': hp.uniform('gamma', 0.1, 0.50),
+    'max_bin': hp.choice('max_bin', range(32, 512, 32)),
+    'min_child_weight': hp.quniform('min_child_weight', 1, 15, 1),
+    'subsample': hp.uniform('subsample', 0.1, 1.0),
+    'reg_alpha': hp.uniform('reg_alpha', 0.0, 1.0),
+    'reg_lambda': hp.uniform('reg_lambda', 0.0, 1.0),
+    'colsample_bytree': hp.uniform('colsample_bytree', 0.5, 1.0),
+}
 trials = Trials()
 best_ = fmin(fn=LGBM_fine_tune,
             space=space,
@@ -655,9 +647,9 @@ from nbeats_forecast import NBeats
 from torch import optim
 
 nbeats_bound = df.shape[0]-48
-n_b  = df['Energy'][:nbeats_bound] 
+n_b  = df['Energy'][:nbeats_bound]
 test = df['Energy'][-48:].values
-data = n_b.values    
+data = n_b.values
 data = np.reshape(data,(len(data),1))    #univariate time series data of shape nx1 (numpy array)
 
 model=NBeats(data=data,period_to_forecast=48,stack=[2,3],nb_blocks_per_stack=3,thetas_dims=[2,8])
